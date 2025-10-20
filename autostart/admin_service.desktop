@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Exec=/home/show/my-ad/venv/bin/python /home/show/my-ad/admin/app.py
+Hidden=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=5
+X-KDE-autostart-after=panel
+Name=Admin Service
+Name[zh_CN]=管理后台服务
+Comment=Media display system admin backend service
+Comment[zh_CN]=媒体显示系统管理后台服务
+Icon=applications-system
+Categories=System;Network;
+StartupNotify=false
+Terminal=false

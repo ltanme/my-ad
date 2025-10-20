@@ -1,0 +1,424 @@
+{% extends "base.html" %}
+
+{% block title %}{{ zone_name }} - 区域管理{% endblock %}
+
+{% block extra_css %}
+<style>
+    .playlist-card {
+        transition: all 0.3s;
+    }
+
+    .playlist-card:hover {
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .playlist-card.active {
+        border: 2px solid #0d6efd;
+    }
+
+    .item-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">← 返回</a>
+            <h2 class="d-inline ms-3">{{ zone_name }}</h2>
+            <span class="badge bg-secondary ms-2">{{ zone_code }}</span>
+        </div>
+        <button class="btn btn-primary" onclick="showCreatePlaylistModal()">
+            <i class="bi bi-plus-lg"></i> 新建播放列表
+        </button>
+    </div>
+
+    <div class="row g-3">
+        {% if playlists %}
+        {% for playlist in playlists %}
+        <div class="col-md-6">
+            <div class="card playlist-card {% if playlist.is_active %}active{% endif %}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>{{ playlist.name }}</strong>
+                        {% if playlist.is_active %}
+                        <span class="badge bg-success ms-2">活跃</span>
+                        {% endif %}
+                    </div>
+                    <div class="btn-group btn-group-sm">
+                        {% if not playlist.is_active %}
+                        <button class="btn btn-outline-success"
+                            onclick="activatePlaylist({{ playlist.id }})">激活</button>
+                        {% endif %}
+                        <button class="btn btn-outline-primary" onclick="manageItems({{ playlist.id }})">管理内容</button>
+                        <button class="btn btn-outline-danger" onclick="deletePlaylist({{ playlist.id }})">删除</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="mb-1"><small class="text-muted">循环模式: {{ playlist.loop_mode }}</small></p>
+                    <p class="mb-0"><small class="text-muted">创建时间: {{ playlist.created_at }}</small></p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                该区域还没有播放列表，点击右上角按钮创建一个。
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 创建播放列表模态框 -->
+<div class="modal fade" id="createPlaylistModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">新建播放列表</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createPlaylistForm">
+                    <div class="mb-3">
+                        <label class="form-label">列表名称</label>
+                        <input type="text" class="form-control" id="playlistName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">循环模式</label>
+                        <select class="form-select" id="loopMode">
+                            <option value="loop">循环播放</option>
+                            <option value="once">播放一次</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="createPlaylist()">创建</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 管理内容模态框 -->
+<div class="modal fade" id="manageItemsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">管理播放内容</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <button class="btn btn-sm btn-primary" onclick="showAddTextModal()">添加文字</button>
+                    <button class="btn btn-sm btn-success" onclick="showUploadModal()">上传图片/视频</button>
+                </div>
+                <div class="item-list" id="itemList">
+                    <p class="text-muted">加载中...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加文字模态框 -->
+<div class="modal fade" id="addTextModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加文字内容</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addTextForm">
+                    <div class="mb-3">
+                        <label class="form-label">文字内容</label>
+                        <textarea class="form-control" id="textContent" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">显示时长(毫秒)</label>
+                        <input type="number" class="form-control" id="displayMs" value="5000">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="addTextItem()">添加</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 上传文件模态框 -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">上传图片/视频</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label">选择文件</label>
+                        <input type="file" class="form-control" id="fileInput" accept="image/*,video/*,.heic,.heif" required>
+                        <div class="form-text">支持格式: PNG, JPG, GIF, HEIC, MP4, AVI, MOV, MKV (最大500MB)</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">显示时长(毫秒) - 仅图片</label>
+                        <input type="number" class="form-control" id="uploadDisplayMs" value="5000">
+                        <div class="form-text">视频将自动使用视频时长</div>
+                    </div>
+                    <div id="uploadProgress" class="progress d-none mb-3">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
+                            style="width: 0%"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="uploadFile()" id="uploadBtn">上传</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const zoneCode = '{{ zone_code }}';
+    let currentPlaylistId = null;
+
+    function showCreatePlaylistModal() {
+        new bootstrap.Modal(document.getElementById('createPlaylistModal')).show();
+    }
+
+    function createPlaylist() {
+        const name = $('#playlistName').val();
+        const loopMode = $('#loopMode').val();
+
+        $.ajax({
+            url: '/api/playlist/create',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                zone_code: zoneCode,
+                name: name,
+                loop_mode: loopMode
+            }),
+            success: function (res) {
+                if (res.success) {
+                    location.reload();
+                } else {
+                    alert('创建失败: ' + res.error);
+                }
+            }
+        });
+    }
+
+    function activatePlaylist(playlistId) {
+        if (!confirm('确定要激活这个播放列表吗？')) return;
+
+        $.ajax({
+            url: `/api/playlist/${playlistId}/activate`,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ zone_code: zoneCode }),
+            success: function (res) {
+                if (res.success) {
+                    location.reload();
+                } else {
+                    alert('激活失败: ' + res.error);
+                }
+            }
+        });
+    }
+
+    function deletePlaylist(playlistId) {
+        if (!confirm('确定要删除这个播放列表吗？此操作不可恢复！')) return;
+
+        $.ajax({
+            url: `/api/playlist/${playlistId}/delete`,
+            method: 'POST',
+            success: function (res) {
+                if (res.success) {
+                    location.reload();
+                } else {
+                    alert('删除失败: ' + res.error);
+                }
+            }
+        });
+    }
+
+    function manageItems(playlistId) {
+        currentPlaylistId = playlistId;
+        loadItems(playlistId);
+        new bootstrap.Modal(document.getElementById('manageItemsModal')).show();
+    }
+
+    function loadItems(playlistId) {
+        $.ajax({
+            url: `/api/playlist/${playlistId}/items`,
+            method: 'GET',
+            success: function (res) {
+                if (res.success) {
+                    displayItems(res.items);
+                }
+            }
+        });
+    }
+
+    function displayItems(items) {
+        const html = items.length > 0 ? items.map((item, idx) => `
+        <div class="card mb-2">
+            <div class="card-body py-2">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center mb-1">
+                            <strong>#${idx + 1}</strong>
+                            <span class="badge bg-secondary ms-2">ID: ${item.id}</span>
+                            ${item.asset_id ? `<span class="badge bg-primary ms-1">资源ID: ${item.asset_id}</span>` : ''}
+                            ${item.kind ? `<span class="badge bg-info ms-1">${item.kind}</span>` : ''}
+                        </div>
+                        ${item.text_inline ? `
+                            <div class="mb-1">
+                                <strong>文字内容:</strong> <span class="text-break">${item.text_inline}</span>
+                            </div>
+                        ` : ''}
+                        ${item.uri ? `
+                            <div class="mb-1">
+                                <strong>资源路径:</strong> 
+                                <code class="text-break small">${item.uri}</code>
+                            </div>
+                        ` : ''}
+                        <small class="text-muted d-block">
+                            <i class="bi bi-clock"></i> 添加时间: ${item.created_at || '未知'}
+                            ${item.display_ms ? ` | <i class="bi bi-hourglass"></i> 显示时长: ${item.display_ms}ms` : ''}
+                            ${item.play_order ? ` | 播放顺序: ${item.play_order}` : ''}
+                        </small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger ms-2" onclick="deleteItem(${item.id})">删除</button>
+                </div>
+            </div>
+        </div>
+    `).join('') : '<p class="text-muted">暂无内容</p>';
+
+        $('#itemList').html(html);
+    }
+
+    function showAddTextModal() {
+        new bootstrap.Modal(document.getElementById('addTextModal')).show();
+    }
+
+    function addTextItem() {
+        const text = $('#textContent').val();
+        const displayMs = $('#displayMs').val();
+
+        $.ajax({
+            url: '/api/item/add',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                playlist_id: currentPlaylistId,
+                type: 'text',
+                text: text,
+                display_ms: parseInt(displayMs)
+            }),
+            success: function (res) {
+                if (res.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('addTextModal')).hide();
+                    loadItems(currentPlaylistId);
+                    $('#textContent').val('');
+                } else {
+                    alert('添加失败: ' + res.error);
+                }
+            }
+        });
+    }
+
+    function deleteItem(itemId) {
+        if (!confirm('确定要删除这个项目吗？')) return;
+
+        $.ajax({
+            url: `/api/item/${itemId}/delete`,
+            method: 'POST',
+            success: function (res) {
+                if (res.success) {
+                    loadItems(currentPlaylistId);
+                } else {
+                    alert('删除失败: ' + res.error);
+                }
+            }
+        });
+    }
+
+    function showUploadModal() {
+        if (!currentPlaylistId) {
+            alert('请先选择一个播放列表');
+            return;
+        }
+        new bootstrap.Modal(document.getElementById('uploadModal')).show();
+    }
+
+    function uploadFile() {
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+
+        if (!file) {
+            alert('请选择文件');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('playlist_id', currentPlaylistId);
+        formData.append('display_ms', $('#uploadDisplayMs').val());
+
+        // 显示进度条
+        $('#uploadProgress').removeClass('d-none');
+        $('#uploadBtn').prop('disabled', true).text('上传中...');
+
+        $.ajax({
+            url: '/api/upload',
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            xhr: function () {
+                const xhr = new window.XMLHttpRequest();
+                xhr.upload.addEventListener('progress', function (e) {
+                    if (e.lengthComputable) {
+                        const percentComplete = (e.loaded / e.total) * 100;
+                        $('#uploadProgress .progress-bar').css('width', percentComplete + '%');
+                    }
+                }, false);
+                return xhr;
+            },
+            success: function (res) {
+                if (res.success) {
+                    alert('上传成功！');
+                    bootstrap.Modal.getInstance(document.getElementById('uploadModal')).hide();
+                    loadItems(currentPlaylistId);
+                    fileInput.value = '';
+                    $('#uploadProgress').addClass('d-none');
+                    $('#uploadProgress .progress-bar').css('width', '0%');
+                } else {
+                    alert('上传失败: ' + res.error);
+                }
+            },
+            error: function (xhr, status, error) {
+                alert('上传失败: ' + error);
+            },
+            complete: function () {
+                $('#uploadBtn').prop('disabled', false).text('上传');
+            }
+        });
+    }
+</script>
+{% endblock %}

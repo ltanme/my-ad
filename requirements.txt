@@ -1,0 +1,21 @@
+# 多区域媒体显示系统依赖
+
+# Web 框架
+Flask==3.0.0
+Werkzeug==3.0.0
+
+# 配置文件
+PyYAML==6.0.1
+
+# HTTP 请求
+requests==2.31.0
+
+# GUI 框架（Viewer）
+PyQt5==5.15.9
+
+# 图片处理
+Pillow==10.0.0
+pillow-heif==0.13.0  # HEIC 格式支持
+
+# 数据库
+# SQLite 是 Python 内置的，无需额外安装

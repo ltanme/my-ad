@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Exec=/home/show/my-ad/venv/bin/python /home/show/my-ad/schedule/app.py
+Hidden=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=10
+X-KDE-autostart-after=panel
+Name=Schedule Service
+Name[zh_CN]=播放列表计划服务
+Comment=Playlist schedule generation service with NAS mount
+Comment[zh_CN]=播放列表计划生成服务（含NAS挂载）
+Icon=appointment-new
+Categories=System;Network;
+StartupNotify=false
+Terminal=false

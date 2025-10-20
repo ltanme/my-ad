@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Exec=/home/show/my-ad/venv/bin/python /home/show/my-ad/viewer/main.py
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=20
+X-KDE-autostart-after=panel
+Name=Media Viewer
+Name[zh_CN]=媒体显示器
+Comment=Multi-zone media display viewer
+Comment[zh_CN]=多区域媒体显示查看器
+Icon=video-display
+Categories=Graphics;Video;AudioVideo;
+StartupNotify=false
+Terminal=false

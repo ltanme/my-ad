@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %}管理主页 - 媒体显示系统{% endblock %}
+
+{% block extra_css %}
+<style>
+    .zone-layout {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .zone-box {
+        background: #ffc0cb;
+        border: 2px solid #ddd;
+        border-radius: 6px;
+        padding: 15px;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-decoration: none;
+        color: #333;
+        box-sizing: border-box;
+        width: 100%;
+    }
+
+    .zone-box:hover {
+        background: #ffb3c1;
+        border-color: #999;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .zone-name {
+        font-weight: bold;
+        font-size: 14px;
+        margin-bottom: 5px;
+        text-align: center;
+    }
+
+    .zone-code {
+        font-size: 11px;
+        color: #666;
+        text-align: center;
+    }
+
+    /* 顶部跑马灯 */
+    .zone-top-marquee {
+        height: 80px;
+        margin-bottom: 15px;
+        width: 100%;
+    }
+
+    /* 中间行 */
+    .zone-middle-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 15px;
+        width: 100%;
+    }
+
+    .zone-left-16x9 {
+        height: 280px;
+    }
+
+    .zone-right-9x16 {
+        height: 280px;
+    }
+
+    .zone-extra-col {
+        display: grid;
+        grid-template-rows: 1fr 1fr;
+        gap: 15px;
+    }
+
+    .zone-extra-item {
+        height: 132px;
+    }
+
+    /* 底部三格 */
+    .zone-bottom-cells {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+        margin-bottom: 15px;
+        width: 100%;
+    }
+
+    .zone-bottom-cell {
+        height: 120px;
+    }
+
+    /* 底部状态条 */
+    .zone-bottom-strip {
+        height: 60px;
+        width: 100%;
+    }
+
+    /* 移动端响应式 */
+    @media (max-width: 768px) {
+        .zone-layout {
+            padding: 10px;
+        }
+
+        .zone-middle-row {
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .zone-left-16x9,
+        .zone-right-9x16 {
+            height: 200px;
+        }
+
+        .zone-extra-col {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr;
+            gap: 10px;
+        }
+
+        .zone-extra-item {
+            height: 100px;
+        }
+
+        .zone-bottom-cells {
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .zone-bottom-cell {
+            height: 80px;
+        }
+
+        .zone-top-marquee,
+        .zone-bottom-strip {
+            height: 60px;
+        }
+
+        .zone-name {
+            font-size: 13px;
+        }
+
+        .zone-code {
+            font-size: 10px;
+        }
+    }
+
+    /* 小屏幕优化 */
+    @media (max-width: 480px) {
+        .zone-layout {
+            padding: 8px;
+        }
+
+        .zone-box {
+            padding: 10px;
+        }
+
+        .zone-middle-row,
+        .zone-bottom-cells {
+            gap: 8px;
+        }
+
+        .zone-extra-col {
+            gap: 8px;
+        }
+
+        .zone-name {
+            font-size: 12px;
+        }
+
+        .zone-code {
+            font-size: 9px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mt-4">
+    <h2 class="mb-4">区域管理</h2>
+
+    <div class="zone-layout">
+        <!-- 顶部跑马灯 -->
+        <a href="{{ url_for('zone_manage', zone_code='top_marquee') }}" class="zone-box zone-top-marquee">
+            <div class="zone-name">顶部跑马灯</div>
+            <div class="zone-code">top_marquee</div>
+        </a>
+
+        <!-- 中间行：左侧16:9 + 右侧9:16 + 右侧竖条 -->
+        <div class="zone-middle-row">
+            <!-- 左侧 16:9 -->
+            <a href="{{ url_for('zone_manage', zone_code='left_16x9') }}" class="zone-box zone-left-16x9">
+                <div class="zone-name">中部左侧 16:9 容器</div>
+                <div class="zone-code">left_16x9</div>
+            </a>
+
+            <!-- 右侧 9:16 -->
+            <a href="{{ url_for('zone_manage', zone_code='right_9x16') }}" class="zone-box zone-right-9x16">
+                <div class="zone-name">中部右侧 9:16 容器</div>
+                <div class="zone-code">right_9x16</div>
+            </a>
+
+            <!-- 右侧竖条：上下两格 -->
+            <div class="zone-extra-col">
+                <a href="{{ url_for('zone_manage', zone_code='extra_top') }}" class="zone-box zone-extra-item">
+                    <div class="zone-name">右侧竖条 上格</div>
+                    <div class="zone-code">extra_top</div>
+                </a>
+                <a href="{{ url_for('zone_manage', zone_code='extra_bottom') }}" class="zone-box zone-extra-item">
+                    <div class="zone-name">右侧竖条 下格</div>
+                    <div class="zone-code">extra_bottom</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- 底部三格 -->
+        <div class="zone-bottom-cells">
+            <a href="{{ url_for('zone_manage', zone_code='bottom_cell_1') }}" class="zone-box zone-bottom-cell">
+                <div class="zone-name">底部三格：左</div>
+                <div class="zone-code">bottom_cell_1</div>
+            </a>
+            <a href="{{ url_for('zone_manage', zone_code='bottom_cell_2') }}" class="zone-box zone-bottom-cell">
+                <div class="zone-name">底部三格：中</div>
+                <div class="zone-code">bottom_cell_2</div>
+            </a>
+            <a href="{{ url_for('zone_manage', zone_code='bottom_cell_3') }}" class="zone-box zone-bottom-cell">
+                <div class="zone-name">底部三格：右</div>
+                <div class="zone-code">bottom_cell_3</div>
+            </a>
+        </div>
+
+        <!-- 底部状态条 -->
+        <a href="{{ url_for('zone_manage', zone_code='bottom_strip') }}" class="zone-box zone-bottom-strip">
+            <div class="zone-name">底部状态条（仅文字）</div>
+            <div class="zone-code">bottom_strip</div>
+        </a>
+    </div>
+</div>
+{% endblock %}

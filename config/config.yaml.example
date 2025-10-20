@@ -1,0 +1,136 @@
+# 多区域媒体显示系统配置文件
+# 复制此文件为 config.yaml 并修改相应配置
+
+# 数据库配置
+database:
+  # 数据库文件名（相对于项目根目录）
+  filename: config/media_display.db
+  # 是否自动创建数据库（如果不存在）
+  auto_create: true
+
+# 播放列表计划任务生成
+schedule:
+    # Admin 服务地址
+    api_host: http://127.0.0.1:3400
+    # Admin 服务登录凭据
+    username: admin
+    password: your_password_here
+    # NAS 服务器 IP
+    nas_host: 192.168.100.xxx
+    # NAS 共享目录（SMB 共享名称）
+    mount_path:
+       - photo
+       - newPhoto
+    # 挂载类型: nfs 或 smb
+    mount_type: smb
+    # SMB 认证信息
+    smb_username: your_nas_username
+    smb_password: your_nas_password
+    # 本地挂载基础目录
+    local_mount_base: /tmp/nas_mounts
+    # 每个播放列表的媒体数量
+    image_count: 10
+    video_count: 10
+    # 每个区域生成的播放列表数量
+    image_playlists_per_zone: 2
+    video_playlists_per_zone: 1
+    # 目标显示区域
+    target_zones:
+       - left_16x9
+       - right_9x16
+    # 支持的文件扩展名
+    image_extensions: ['jpg', 'jpeg', 'png', 'gif', 'heic', 'heif']
+    video_extensions: ['mp4', 'avi', 'mov', 'mkv']
+
+# 管理后台配置
+admin:
+  # 管理员账号（请修改）
+  username: admin
+  password: your_password_here
+  # Flask 安全密钥（生产环境必须修改为随机字符串）
+  # 生成方法: python -c "import secrets; print(secrets.token_hex(32))"
+  secret_key: "change_this_to_random_secret_key"
+  # 上传资源目录（相对于项目根目录）
+  upload_folder: uploads
+  # 允许的文件扩展名
+  allowed_extensions: ['png', 'jpg', 'jpeg', 'gif', 'heic', 'heif', 'mp4', 'avi', 'mov', 'mkv']
+  # 最大文件大小（MB）
+  max_file_size: 500
+
+# 显示配置
+display:
+  # 窗口标题
+  window_title: "多区域媒体显示器"
+  # 启动时是否最大化
+  start_maximized: true
+  # 是否启用全屏模式
+  fullscreen: false
+
+# 区域配置
+zones:
+  # 顶部跑马灯
+  top_marquee:
+    enabled: true
+    font_size: 36
+    speed: 3  # 像素/步
+    interval: 20  # 毫秒
+    gap: 80  # 文字间隙
+    loops_per_text: 2  # 每条文字滚动次数
+  
+  # 左侧16:9区域
+  left_16x9:
+    enabled: true
+    border_color: "yellow"
+    default_image_duration: 5000  # 毫秒
+  
+  # 右侧9:16区域
+  right_9x16:
+    enabled: true
+    border_color: "yellow"
+    default_image_duration: 5000
+  
+  # 右上格
+  extra_top:
+    enabled: true
+    border_color: "red"
+  
+  # 右下格
+  extra_bottom:
+    enabled: true
+    border_color: "red"
+  
+  # 底部三格
+  bottom_cells:
+    enabled: true
+    border_color: "cyan"
+  
+  # 底部状态条
+  bottom_strip:
+    enabled: true
+    font_size: 22
+
+# 倒计时配置
+countdown:
+  enabled: true
+  font_size: 24
+  background_opacity: 120  # 0-255
+  position: "bottom-right"  # bottom-right, bottom-left, top-right, top-left
+
+# 日志配置
+logging:
+  enabled: true
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  show_playback_info: true
+  viewer_log_dir: /tmp/viewer  # viewer 日志目录
+  viewer_log_file: viewer.log  # viewer 日志文件名
+  admin_log_dir: /tmp/admin  # admin 日志目录
+  admin_log_file: admin.log  # admin 日志文件名
+  schedule_log_dir: /tmp/schedule  # schedule 日志目录
+  schedule_log_file: schedule.log  # schedule 日志文件名
+
+# 性能配置
+performance:
+  # 图片缩放质量
+  image_quality: "high"  # low, medium, high
+  # 视频硬件加速
+  video_hardware_acceleration: true

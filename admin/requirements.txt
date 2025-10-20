@@ -1,0 +1,10 @@
+# Flask Web 框架
+Flask>=2.3.0
+Werkzeug>=2.3.0
+
+# 配置文件解析
+PyYAML>=5.4.0
+
+# 图片处理（支持 HEIC 格式）
+Pillow>=10.0.0
+pillow-heif>=0.13.0
