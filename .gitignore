@@ -46,6 +46,8 @@ config/*.db
 
 # 上传文件目录
 uploads/
+
+# 媒体文件（排除 doc 目录）
 *.jpg
 *.jpeg
 *.png
@@ -56,6 +58,12 @@ uploads/
 *.mkv
 *.heic
 *.heif
+
+# 但允许 doc 目录中的图片
+!doc/*.jpg
+!doc/*.jpeg
+!doc/*.png
+!doc/*.gif
 
 # 日志文件
 *.log
