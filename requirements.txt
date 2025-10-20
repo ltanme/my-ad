@@ -16,6 +16,6 @@ PyQt5==5.15.9
 # 图片处理
 Pillow==10.0.0
 pillow-heif==0.13.0  # HEIC 格式支持
-
+requests==2.31.0
 # 数据库
 # SQLite 是 Python 内置的，无需额外安装
