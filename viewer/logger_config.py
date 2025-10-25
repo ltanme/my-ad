@@ -39,10 +39,15 @@ def setup_logger(config):
     
     # 创建日志目录
     log_dir_path = Path(log_dir)
-    log_dir_path.mkdir(parents=True, exist_ok=True)
+    try:
+        log_dir_path.mkdir(parents=True, exist_ok=True)
+        print(f"[Logger] 日志目录已创建: {log_dir_path}")
+    except Exception as e:
+        print(f"[Logger] 创建日志目录失败: {e}")
     
     # 日志文件路径
     log_file_path = log_dir_path / log_file
+    print(f"[Logger] 日志文件路径: {log_file_path}")
     
     # 创建文件 handler
     file_handler = logging.FileHandler(log_file_path, encoding='utf-8')

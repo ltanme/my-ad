@@ -5,10 +5,17 @@
 管理16:9、9:16主显示区域，以及右侧竖条和底部三格
 """
 
+import os
+import sys
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtCore import QTimer, QRect
 from PyQt5.QtMultimedia import QMediaPlayer
 from .media_frame import MediaFrame
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from logger_config import get_logger
+
+logger = get_logger()
 
 
 class MiddleStage(QWidget):
@@ -48,14 +55,20 @@ class MiddleStage(QWidget):
         # 左侧 16:9 - 支持图片+视频混合播放
         self.left_16x9.name = "左侧16:9"
         items = db_manager.get_playlist_items("left_16x9", limit=20)
+        logger.info(f"[左侧16:9] 从数据库获取到 {len(items)} 个播放项")
         if items:
             self._start_mixed_playlist(self.left_16x9, items)
+        else:
+            logger.warning(f"[左侧16:9] 没有播放项，显示默认文字")
         
         # 右侧 9:16 - 支持图片+视频混合播放
         self.right_9x16.name = "右侧9:16"
         items = db_manager.get_playlist_items("right_9x16", limit=20)
+        logger.info(f"[右侧9:16] 从数据库获取到 {len(items)} 个播放项")
         if items:
             self._start_mixed_playlist(self.right_9x16, items)
+        else:
+            logger.warning(f"[右侧9:16] 没有播放项，显示默认文字")
         
         # 顶行右侧两格
         self.extra_top.name = "右上格"
@@ -84,42 +97,59 @@ class MiddleStage(QWidget):
     def _start_mixed_playlist(self, frame: MediaFrame, items: list):
         """启动混合播放列表：图片+视频+文字按顺序循环"""
         if not items:
+            logger.warning(f"[{frame.name}] 播放列表为空")
             return
         
+        logger.info(f"[{frame.name}] 开始构建混合播放列表，共 {len(items)} 个项目")
+        
         playlist = []
-        for item in items:
+        for idx, item in enumerate(items, 1):
             kind = item.get("kind")
-            item_id = item.get("id")  # 获取播放项ID
+            item_id = item.get("id")
             
             if kind == "image":
                 uri = item.get("uri")
                 if uri:
+                    logger.debug(f"[{frame.name}] 项目 {idx}: 图片 - {uri}")
                     playlist.append({
                         "type": "image",
                         "uri": uri,
                         "display_ms": item.get("display_ms", 5000),
                         "item_id": item_id
                     })
+                else:
+                    logger.warning(f"[{frame.name}] 项目 {idx}: 图片 URI 为空")
+                    
             elif kind == "video":
                 uri = item.get("uri")
                 if uri:
+                    logger.debug(f"[{frame.name}] 项目 {idx}: 视频 - {uri}")
                     playlist.append({
                         "type": "video",
                         "uri": uri,
                         "item_id": item_id
                     })
+                else:
+                    logger.warning(f"[{frame.name}] 项目 {idx}: 视频 URI 为空")
+                    
             elif kind == "text":
                 text = item.get("text")
                 if text:
+                    logger.debug(f"[{frame.name}] 项目 {idx}: 文字 - {text[:30]}...")
                     playlist.append({
                         "type": "text",
                         "text": text,
                         "display_ms": item.get("display_ms", 5000),
                         "item_id": item_id
                     })
+                else:
+                    logger.warning(f"[{frame.name}] 项目 {idx}: 文字内容为空")
         
         if not playlist:
+            logger.error(f"[{frame.name}] 没有有效的播放项")
             return
+        
+        logger.info(f"[{frame.name}] ✓ 构建完成，有效播放项: {len(playlist)}/{len(items)}")
         
         frame._mixed_playlist = playlist
         frame._mixed_index = 0

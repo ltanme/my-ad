@@ -18,20 +18,33 @@ log_file = config.get('logging', {}).get('schedule_log_file', 'schedule.log')
 log_level = config.get('logging', {}).get('level', 'INFO')
 
 # 创建日志目录
-Path(log_dir).mkdir(parents=True, exist_ok=True)
-log_file_path = Path(log_dir) / log_file
+log_dir_path = Path(log_dir)
+log_dir_path.mkdir(parents=True, exist_ok=True)
+log_file_path = log_dir_path / log_file
 
-# 配置日志处理器
-logging.basicConfig(
-    level=getattr(logging, log_level.upper(), logging.INFO),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(log_file_path, encoding='utf-8'),
-        logging.StreamHandler()
-    ]
-)
+# 清除已有的 handlers
+root_logger = logging.getLogger()
+for handler in root_logger.handlers[:]:
+    root_logger.removeHandler(handler)
+
+# 创建文件 handler
+file_handler = logging.FileHandler(log_file_path, encoding='utf-8')
+file_handler.setLevel(getattr(logging, log_level.upper(), logging.INFO))
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+
+# 创建控制台 handler
+console_handler = logging.StreamHandler()
+console_handler.setLevel(getattr(logging, log_level.upper(), logging.INFO))
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+
+# 配置 root logger
+root_logger.setLevel(getattr(logging, log_level.upper(), logging.INFO))
+root_logger.addHandler(file_handler)
+root_logger.addHandler(console_handler)
+
 logger = logging.getLogger(__name__)
 logger.info(f"日志文件: {log_file_path}")
+logger.info(f"日志目录: {log_dir_path}")
 
 app = Flask(__name__)
 

@@ -6,11 +6,17 @@
 """
 
 import platform
+import os
 from PyQt5.QtWidgets import QFrame, QLabel, QSizePolicy, QStackedLayout
 from PyQt5.QtCore import Qt, QTimer, QUrl
 from PyQt5.QtGui import QPixmap, QMovie
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent, QMediaPlaylist
 from PyQt5.QtMultimediaWidgets import QVideoWidget
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from logger_config import get_logger
+
+logger = get_logger()
 
 
 class MediaFrame(QFrame):
@@ -141,15 +147,34 @@ class MediaFrame(QFrame):
 
     def set_image(self, path: str, cover=True, display_ms=5000):
         """显示图片"""
+        logger.info(f"[{self.name}] 尝试加载图片: {path}")
+        
+        # 检查文件是否存在
+        if not os.path.exists(path):
+            logger.error(f"[{self.name}] 图片文件不存在: {path}")
+            self.set_text(f"图片不存在\n{os.path.basename(path)}")
+            return
+        
+        # 检查文件大小
+        try:
+            file_size = os.path.getsize(path)
+            logger.debug(f"[{self.name}] 图片文件大小: {file_size} bytes")
+        except Exception as e:
+            logger.error(f"[{self.name}] 无法读取文件大小: {e}")
+        
         self._cover_images = cover
         if self._movie:
             self._movie.stop()
             self._movie = None
             self.content_label.setMovie(None)
+        
         pm = QPixmap(path)
         if pm.isNull():
-            self.set_text("图片加载失败")
+            logger.error(f"[{self.name}] 图片加载失败（QPixmap.isNull）: {path}")
+            self.set_text(f"图片加载失败\n{os.path.basename(path)}")
             return
+        
+        logger.info(f"[{self.name}] ✓ 图片加载成功: {os.path.basename(path)} ({pm.width()}x{pm.height()})")
         self._apply_pixmap(pm)
         self.stack.setCurrentWidget(self.content_label)
         self._start_countdown(display_ms)
@@ -187,14 +212,50 @@ class MediaFrame(QFrame):
 
     def play_videos(self, items, loop=True, start_index=0):
         """播放视频列表"""
+        logger.info(f"[{self.name}] 准备播放 {len(items or [])} 个视频")
+        
         self.playlist.clear()
-        for p in items or []:
-            url = QUrl.fromLocalFile(p) if self._looks_like_local(p) else QUrl(p)
+        valid_count = 0
+        
+        for idx, p in enumerate(items or [], 1):
+            # 检查文件是否存在
+            if self._looks_like_local(p):
+                # 移除 file:// 前缀
+                file_path = p.replace('file://', '')
+                if not os.path.exists(file_path):
+                    logger.error(f"[{self.name}] 视频 {idx}/{len(items)} 文件不存在: {file_path}")
+                    continue
+                
+                # 检查文件大小
+                try:
+                    file_size = os.path.getsize(file_path)
+                    logger.info(f"[{self.name}] 视频 {idx}/{len(items)}: {os.path.basename(file_path)} ({file_size} bytes)")
+                except Exception as e:
+                    logger.error(f"[{self.name}] 无法读取视频文件: {e}")
+                    continue
+                
+                url = QUrl.fromLocalFile(file_path)
+            else:
+                url = QUrl(p)
+                logger.info(f"[{self.name}] 视频 {idx}/{len(items)}: {p}")
+            
             self.playlist.addMedia(QMediaContent(url))
+            valid_count += 1
+        
+        if valid_count == 0:
+            logger.error(f"[{self.name}] 没有有效的视频文件可播放")
+            self.set_text("没有可播放的视频")
+            return
+        
+        logger.info(f"[{self.name}] ✓ 添加了 {valid_count} 个有效视频到播放列表")
+        
         self.playlist.setPlaybackMode(QMediaPlaylist.Loop if loop else QMediaPlaylist.Sequential)
         self.playlist.setCurrentIndex(max(0, start_index))
         self.stack.setCurrentWidget(self.video_widget)
         self.player.play()
+        
+        logger.info(f"[{self.name}] 开始播放视频（循环模式: {loop}）")
+        
         # 确保标签在最上层
         self.resource_id_label.raise_()
         self.countdown_label.raise_()
@@ -203,7 +264,14 @@ class MediaFrame(QFrame):
         return p.startswith(("/", "./", "../")) or p.lower().startswith("file://")
 
     def _on_player_error(self):
-        print(f"[{self.name}] 播放器错误: {self.player.error()} - {self.player.errorString()}")
+        error_msg = f"播放器错误: {self.player.error()} - {self.player.errorString()}"
+        logger.error(f"[{self.name}] {error_msg}")
+        
+        # 获取当前播放的媒体信息
+        current_media = self.player.currentMedia()
+        if current_media and not current_media.isNull():
+            media_url = current_media.canonicalUrl().toString()
+            logger.error(f"[{self.name}] 出错的媒体: {media_url}")
 
     def _on_media_status_changed(self, status):
         pass
