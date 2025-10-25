@@ -3,7 +3,7 @@
 """
 媒体显示系统管理后台
 """
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash, send_file
 from werkzeug.utils import secure_filename
 import os
 import sqlite3
@@ -358,6 +358,35 @@ def api_add_asset_by_path():
     except Exception as e:
         logger.error(f"通过路径添加资源失败: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/database/download', methods=['GET'])
+@login_required
+def download_database():
+    """下载数据库文件"""
+    try:
+        db_path = DATABASE_PATH
+        
+        if not os.path.exists(db_path):
+            logger.error(f"数据库文件不存在: {db_path}")
+            return jsonify({'success': False, 'error': '数据库文件不存在'}), 404
+        
+        # 生成带时间戳的文件名
+        from datetime import datetime
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        download_name = f'media_display_{timestamp}.db'
+        
+        logger.info(f"下载数据库: {db_path} -> {download_name}")
+        
+        return send_file(
+            db_path,
+            as_attachment=True,
+            download_name=download_name,
+            mimetype='application/x-sqlite3'
+        )
+    except Exception as e:
+        logger.error(f"下载数据库失败: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 if __name__ == '__main__':
