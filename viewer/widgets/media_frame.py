@@ -34,6 +34,9 @@ class MediaFrame(QFrame):
         self.playlist = QMediaPlaylist(self)
         self.player.setPlaylist(self.playlist)
         self._cover_images = True
+        self._is_fullscreen = False
+        self._base_font_px = 28
+        self._current_font_px = self._base_font_px
 
         self.setStyleSheet(f"QFrame {{ background-color:black; border:5px solid {border_color}; }}")
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -130,6 +133,11 @@ class MediaFrame(QFrame):
         """清除资源ID显示"""
         self.resource_id_label.hide()
 
+    def set_fullscreen_mode(self, enabled: bool):
+        """标记是否全屏（用于动态调整字体大小）"""
+        self._is_fullscreen = bool(enabled)
+        self._apply_text_font_size()
+
     def set_text(self, text: str, display_ms=0):
         """显示文本"""
         if self._movie:
@@ -138,6 +146,7 @@ class MediaFrame(QFrame):
             self.content_label.setMovie(None)
         self.content_label.setPixmap(QPixmap())
         self.content_label.setText(text or "")
+        self._apply_text_font_size()
         self.stack.setCurrentWidget(self.content_label)
         
         if display_ms > 0:
@@ -335,6 +344,8 @@ class MediaFrame(QFrame):
             self._position_resource_id_label()
         if self.countdown_label.isVisible():
             self._position_countdown_label()
+        if self.stack.currentWidget() is self.content_label:
+            self._apply_text_font_size()
     
     def _position_resource_id_label(self):
         """定位资源ID标签到左上角"""
@@ -348,6 +359,23 @@ class MediaFrame(QFrame):
         self.resource_id_label.setGeometry(x, y, label_w, label_h)
         self.resource_id_label.raise_()
         print(f"[MediaFrame] 资源ID标签位置: ({x}, {y}, {label_w}, {label_h})")
+
+    def _set_label_font_size(self, size_px: int):
+        """统一设置文本层字体大小"""
+        size_px = max(1, int(size_px))
+        self._current_font_px = size_px
+        self.content_label.setStyleSheet(
+            f"border:none; color:white; font-size:{size_px}px; font-weight:bold;"
+        )
+
+    def _apply_text_font_size(self):
+        """根据是否全屏调整文本字体大小"""
+        if self._is_fullscreen and self.height() > 0:
+            target_px = max(12, int(self.height() * 0.15))
+        else:
+            target_px = self._base_font_px
+        if target_px != self._current_font_px:
+            self._set_label_font_size(target_px)
 
     def stop(self):
         """停止当前播放并清理计时"""
@@ -371,5 +399,6 @@ class MediaFrame(QFrame):
             pm = self.content_label.pixmap()
             if pm and not pm.isNull():
                 self._apply_pixmap(pm)
-        
+            self._apply_text_font_size()
+
         self._update_label_positions()

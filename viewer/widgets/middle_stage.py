@@ -75,11 +75,13 @@ class MiddleStage(QWidget):
         ]
 
         if fullscreen_zone:
+            self.fullscreen_frame.set_fullscreen_mode(True)
             for f in normal_frames:
                 f.hide()
             self._load_fullscreen_zone(db_manager, fullscreen_zone)
             return
         else:
+            self.fullscreen_frame.set_fullscreen_mode(False)
             for f in normal_frames:
                 f.show()
             self.fullscreen_frame.hide()
