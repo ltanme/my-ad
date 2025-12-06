@@ -32,9 +32,15 @@ class MiddleStage(QWidget):
         # 底部三格
         self.bottom_cells = [MediaFrame(f"格{i+1}", border_color="cyan") for i in range(3)]
 
-        for w in [self.left_16x9, self.right_9x16, self.extra_top, self.extra_bot, *self.bottom_cells]:
+        # 全屏占位框（仅在全屏模式下展示）
+        self.fullscreen_zone = None
+        self.fullscreen_frame = MediaFrame("全屏区域", border_color="orange")
+
+        for w in [self.left_16x9, self.right_9x16, self.extra_top, self.extra_bot, *self.bottom_cells, self.fullscreen_frame]:
             w.setParent(self)
             w.show()
+
+        self.fullscreen_frame.hide()
 
         self.bind_demo()
 
@@ -47,11 +53,38 @@ class MiddleStage(QWidget):
         for i, cell in enumerate(self.bottom_cells, 1):
             cell.set_text(f"格子 {i}（青框）")
 
-    def load_from_database(self, db_manager):
+    def _stop_all_frames(self):
+        """停止所有播放器，避免隐藏时仍占用资源"""
+        for frame in [self.left_16x9, self.right_9x16, self.extra_top, self.extra_bot, *self.bottom_cells, self.fullscreen_frame]:
+            frame.stop()
+
+    def load_from_database(self, db_manager, fullscreen_zone=None):
         """从数据库加载内容"""
         if not db_manager:
             return
-        
+
+        self._stop_all_frames()
+        self.fullscreen_zone = fullscreen_zone
+
+        normal_frames = [
+            self.left_16x9,
+            self.right_9x16,
+            self.extra_top,
+            self.extra_bot,
+            *self.bottom_cells,
+        ]
+
+        if fullscreen_zone:
+            for f in normal_frames:
+                f.hide()
+            self._load_fullscreen_zone(db_manager, fullscreen_zone)
+            return
+        else:
+            for f in normal_frames:
+                f.show()
+            self.fullscreen_frame.hide()
+            self.fullscreen_zone = None
+
         # 左侧 16:9 - 支持图片+视频混合播放
         self.left_16x9.name = "左侧16:9"
         items = db_manager.get_playlist_items("left_16x9", limit=20)
@@ -93,6 +126,23 @@ class MiddleStage(QWidget):
                 txts = [it.get("text") for it in items if it.get("text")]
                 if txts:
                     cell.set_text("\n".join(txts))
+
+    def _load_fullscreen_zone(self, db_manager, zone_code: str):
+        """加载并播放指定区域的全屏内容"""
+        self.fullscreen_zone = zone_code
+        self.fullscreen_frame.name = f"全屏:{zone_code}"
+        items = db_manager.get_playlist_items(zone_code, limit=50)
+
+        logger.info(f"[全屏模式] 区域 {zone_code} 播放项: {len(items)}")
+        if items:
+            self._start_mixed_playlist(self.fullscreen_frame, items)
+        else:
+            self.fullscreen_frame.set_text(f"{zone_code}\n暂无播放内容")
+
+        self.fullscreen_frame.show()
+        area = self.rect().adjusted(6, 6, -6, -6)
+        self.fullscreen_frame.setGeometry(area)
+        self.fullscreen_frame.raise_()
 
     def _start_mixed_playlist(self, frame: MediaFrame, items: list):
         """启动混合播放列表：图片+视频+文字按顺序循环"""
@@ -217,6 +267,10 @@ class MiddleStage(QWidget):
         GUT = 6
         area: QRect = self.rect().adjusted(GUT, GUT, -GUT, -GUT)
         if area.width() <= 0 or area.height() <= 0:
+            return
+
+        if self.fullscreen_zone:
+            self.fullscreen_frame.setGeometry(area.x(), area.y(), area.width(), area.height())
             return
 
         ax, ay = area.x(), area.y()

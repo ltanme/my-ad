@@ -2,8 +2,12 @@
 CREATE TABLE zone (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   code          TEXT UNIQUE NOT NULL,                      -- 机器可读：如 top_marquee, left_16x9 ...
-  name          TEXT NOT NULL                              -- 便于管理的显示名
+  name          TEXT NOT NULL,                             -- 便于管理的显示名
+  is_fullscreen INTEGER NOT NULL DEFAULT 0 CHECK (is_fullscreen IN (0,1)) -- 是否全屏
 );
+
+-- 只允许一个区域被标记为全屏
+CREATE UNIQUE INDEX idx_zone_fullscreen ON zone(is_fullscreen) WHERE is_fullscreen = 1;
 
 -- 建议的区域 code（供插入用）：
 -- top_marquee        顶部跑马灯

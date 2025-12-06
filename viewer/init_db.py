@@ -21,7 +21,8 @@ SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS zone (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   code          TEXT UNIQUE NOT NULL,
-  name          TEXT NOT NULL
+  name          TEXT NOT NULL,
+  is_fullscreen INTEGER NOT NULL DEFAULT 0 CHECK (is_fullscreen IN (0,1))
 );
 
 -- 2) 媒体资源表：统一管理 文本/图片/视频 的来源（本地或 URL）
@@ -43,6 +44,9 @@ CREATE TABLE IF NOT EXISTS media_asset (
 
 CREATE INDEX IF NOT EXISTS idx_media_kind ON media_asset(kind);
 CREATE INDEX IF NOT EXISTS idx_media_uri  ON media_asset(uri);
+
+-- 只允许一个区域被标记为全屏
+CREATE UNIQUE INDEX IF NOT EXISTS idx_zone_fullscreen ON zone(is_fullscreen) WHERE is_fullscreen = 1;
 
 -- 3) 播放列表：一个区域可有多个列表（方便 AB 切换/定时启用）
 CREATE TABLE IF NOT EXISTS playlist (
@@ -124,6 +128,17 @@ def init_database(db_path=DB_PATH):
         # 执行建表语句
         cursor.executescript(SCHEMA_SQL)
         
+        # 兼容旧库：补充 is_fullscreen 字段
+        cursor.execute("PRAGMA table_info(zone)")
+        zone_columns = [row[1] for row in cursor.fetchall()]
+        if 'is_fullscreen' not in zone_columns:
+            cursor.execute(
+                "ALTER TABLE zone ADD COLUMN is_fullscreen INTEGER NOT NULL DEFAULT 0 CHECK (is_fullscreen IN (0,1))"
+            )
+        cursor.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_zone_fullscreen ON zone(is_fullscreen) WHERE is_fullscreen = 1"
+        )
+
         # 插入初始区域数据（如果表为空）
         cursor.execute("SELECT COUNT(*) FROM zone")
         if cursor.fetchone()[0] == 0:

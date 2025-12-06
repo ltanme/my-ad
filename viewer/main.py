@@ -73,12 +73,12 @@ class MultiZoneViewer(QMainWindow):
         font.setPointSize(marquee_config.get('font_size', 36))
         self.marquee.setFont(font)
         
-        top = QFrame()
-        top.setStyleSheet("QFrame{background:black; border:5px solid yellow;}")
-        top_layout = QHBoxLayout(top)
+        self.top_frame = QFrame()
+        self.top_frame.setStyleSheet("QFrame{background:black; border:5px solid yellow;}")
+        top_layout = QHBoxLayout(self.top_frame)
         top_layout.setContentsMargins(10, 10, 10, 10)
         top_layout.addWidget(self.marquee)
-        root.addWidget(top, stretch=5)
+        root.addWidget(self.top_frame, stretch=5)
 
         # 中部舞台
         self.stage = MiddleStage()
@@ -113,6 +113,12 @@ class MultiZoneViewer(QMainWindow):
             return
         
         try:
+            fullscreen_zone = None
+            if hasattr(self.db_manager, "get_fullscreen_zone_code"):
+                fullscreen_zone = self.db_manager.get_fullscreen_zone_code()
+                if fullscreen_zone:
+                    logger.info(f"检测到全屏区域: {fullscreen_zone}")
+
             # 加载顶部跑马灯
             items = self.db_manager.get_playlist_items("top_marquee", limit=50)
             if items:
@@ -120,6 +126,18 @@ class MultiZoneViewer(QMainWindow):
                 loops = config.get('zones.top_marquee.loops_per_text', 2)
                 if texts:
                     self.marquee.set_text_list(texts, loops_per_text=loops)
+
+            if fullscreen_zone:
+                # 全屏时仅渲染指定区域，其余区域隐藏
+                self.marquee.hide()
+                self.top_frame.hide()
+                self.bottom.hide()
+                self.stage.load_from_database(self.db_manager, fullscreen_zone=fullscreen_zone)
+                return
+            else:
+                self.marquee.show()
+                self.top_frame.show()
+                self.bottom.show()
             
             # 加载中部舞台
             self.stage.load_from_database(self.db_manager)

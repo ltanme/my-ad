@@ -22,12 +22,40 @@ class DBHelper:
     
     def __init__(self):
         self.db_path = DATABASE_PATH
+        self._ensure_schema()
     
     def get_connection(self):
         """获取数据库连接"""
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         return conn
+
+    def _ensure_schema(self):
+        """确保新增字段/索引存在（幂等）"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='zone'")
+        has_zone_table = cursor.fetchone()
+        if not has_zone_table:
+            conn.close()
+            return
+
+        # zone 表增加 is_fullscreen 标记
+        cursor.execute("PRAGMA table_info(zone)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if 'is_fullscreen' not in columns:
+            cursor.execute(
+                "ALTER TABLE zone ADD COLUMN is_fullscreen INTEGER NOT NULL DEFAULT 0 CHECK (is_fullscreen IN (0,1))"
+            )
+
+        # 只允许一个区域被标记为全屏
+        cursor.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_zone_fullscreen ON zone(is_fullscreen) WHERE is_fullscreen = 1"
+        )
+
+        conn.commit()
+        conn.close()
     
     # ========== 区域相关 ==========
     def get_zone_by_code(self, zone_code: str) -> Optional[Dict]:
@@ -38,6 +66,49 @@ class DBHelper:
         row = cursor.fetchone()
         conn.close()
         return dict(row) if row else None
+
+    def get_all_zones(self) -> List[Dict]:
+        """获取所有区域信息"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM zone ORDER BY id")
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
+
+    def get_fullscreen_zone(self) -> Optional[Dict]:
+        """获取当前设为全屏的区域"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM zone WHERE is_fullscreen = 1 ORDER BY id LIMIT 1"
+        )
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else None
+
+    def set_zone_fullscreen(self, zone_code: str, enabled: bool):
+        """设置指定区域是否全屏（同时清理其他区域）"""
+        zone = self.get_zone_by_code(zone_code)
+        if not zone:
+            raise ValueError(f"区域不存在: {zone_code}")
+
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        try:
+            if enabled:
+                cursor.execute("UPDATE zone SET is_fullscreen = 0")
+                cursor.execute(
+                    "UPDATE zone SET is_fullscreen = 1 WHERE code = ?", (zone_code,)
+                )
+            else:
+                cursor.execute(
+                    "UPDATE zone SET is_fullscreen = 0 WHERE code = ?", (zone_code,)
+                )
+            conn.commit()
+        finally:
+            conn.close()
     
     # ========== 播放列表相关 ==========
     def get_playlists_by_zone(self, zone_code: str) -> List[Dict]:

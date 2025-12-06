@@ -15,6 +15,7 @@ class MediaDBManager:
     def __init__(self, db_path="media_display.db"):
         self.db_path = db_path
         self._ensure_connection()
+        self._ensure_schema()
     
     def _ensure_connection(self):
         """确保数据库连接可用"""
@@ -24,6 +25,34 @@ class MediaDBManager:
             conn.close()
         except sqlite3.Error as e:
             logger.error(f"数据库连接错误: {e}", exc_info=True)
+
+    def _ensure_schema(self):
+        """补充新增字段/索引，兼容旧库"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='zone'")
+        has_zone_table = cursor.fetchone()
+        if not has_zone_table:
+            conn.close()
+            return
+
+        cursor.execute("PRAGMA table_info(zone)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if 'is_fullscreen' not in columns:
+            try:
+                cursor.execute(
+                    "ALTER TABLE zone ADD COLUMN is_fullscreen INTEGER NOT NULL DEFAULT 0 CHECK (is_fullscreen IN (0,1))"
+                )
+            except sqlite3.Error as e:
+                logger.error(f"补充 is_fullscreen 字段失败: {e}")
+
+        cursor.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_zone_fullscreen ON zone(is_fullscreen) WHERE is_fullscreen = 1"
+        )
+
+        conn.commit()
+        conn.close()
     
     def get_zone_id(self, zone_code: str) -> Optional[int]:
         """根据区域代码获取区域ID"""
@@ -55,6 +84,17 @@ class MediaDBManager:
         if row:
             return {"id": row[0], "name": row[1], "loop_mode": row[2]}
         return None
+
+    def get_fullscreen_zone_code(self) -> Optional[str]:
+        """获取当前标记为全屏的区域代码（如有多条取第一条）"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT code FROM zone WHERE is_fullscreen = 1 ORDER BY id LIMIT 1"
+        )
+        row = cursor.fetchone()
+        conn.close()
+        return row[0] if row else None
     
     def get_playlist_items(self, zone_code: str, limit: int = 10) -> List[Dict]:
         """

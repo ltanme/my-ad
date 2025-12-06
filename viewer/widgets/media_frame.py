@@ -349,6 +349,22 @@ class MediaFrame(QFrame):
         self.resource_id_label.raise_()
         print(f"[MediaFrame] 资源ID标签位置: ({x}, {y}, {label_w}, {label_h})")
 
+    def stop(self):
+        """停止当前播放并清理计时"""
+        try:
+            self.player.stop()
+        except Exception:
+            pass
+
+        self.playlist.clear()
+
+        if self._movie:
+            self._movie.stop()
+            self._movie = None
+            self.content_label.setMovie(None)
+
+        self._stop_countdown()
+
     def resizeEvent(self, e):
         super().resizeEvent(e)
         if self.stack.currentWidget() is self.content_label:

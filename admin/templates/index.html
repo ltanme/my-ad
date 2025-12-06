@@ -27,6 +27,8 @@
         color: #333;
         box-sizing: border-box;
         width: 100%;
+        position: relative;
+        overflow: hidden;
     }
 
     .zone-box:hover {
@@ -34,6 +36,41 @@
         border-color: #999;
         transform: translateY(-2px);
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .zone-box.zone-fullscreen {
+        background: #ffe7ba;
+        border-color: #fa8c16;
+        box-shadow: 0 6px 12px rgba(250, 140, 22, 0.25);
+    }
+
+    .zone-box .zone-settings {
+        position: absolute;
+        top: 8px;
+        right: 10px;
+        color: #0d6efd;
+        font-size: 18px;
+        border: none;
+        background: transparent;
+        padding: 4px;
+        z-index: 2;
+    }
+
+    .zone-box .zone-settings:hover {
+        color: #084298;
+    }
+
+    .zone-badge {
+        position: absolute;
+        left: 10px;
+        top: 10px;
+        background: #faad14;
+        color: #000;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 700;
+        z-index: 2;
     }
 
     .zone-name {
@@ -182,6 +219,17 @@
 {% endblock %}
 
 {% block content %}
+{% macro render_zone(zone, css_class) %}
+<a href="{{ url_for('zone_manage', zone_code=zone.code) }}" class="zone-box {{ css_class }} {% if zone.is_fullscreen %}zone-fullscreen{% endif %}">
+    {% if zone.is_fullscreen %}<span class="zone-badge">全屏</span>{% endif %}
+    <button type="button" class="zone-settings" onclick='openZoneSettings(event, {{ zone.code|tojson }}, {{ zone.name|tojson }}, {{ 1 if zone.is_fullscreen else 0 }})' aria-label="设置 {{ zone.name }}">
+        <i class="bi bi-gear-fill"></i>
+    </button>
+    <div class="zone-name">{{ zone.name }}</div>
+    <div class="zone-code">{{ zone.code }}</div>
+</a>
+{% endmacro %}
+
 <div class="mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">区域管理</h2>
@@ -192,59 +240,111 @@
 
     <div class="zone-layout">
         <!-- 顶部跑马灯 -->
-        <a href="{{ url_for('zone_manage', zone_code='top_marquee') }}" class="zone-box zone-top-marquee">
-            <div class="zone-name">顶部跑马灯</div>
-            <div class="zone-code">top_marquee</div>
-        </a>
+        {{ render_zone(zone_dict['top_marquee'], 'zone-top-marquee') }}
 
         <!-- 中间行：左侧16:9 + 右侧9:16 + 右侧竖条 -->
         <div class="zone-middle-row">
             <!-- 左侧 16:9 -->
-            <a href="{{ url_for('zone_manage', zone_code='left_16x9') }}" class="zone-box zone-left-16x9">
-                <div class="zone-name">中部左侧 16:9 容器</div>
-                <div class="zone-code">left_16x9</div>
-            </a>
+            {{ render_zone(zone_dict['left_16x9'], 'zone-left-16x9') }}
 
             <!-- 右侧 9:16 -->
-            <a href="{{ url_for('zone_manage', zone_code='right_9x16') }}" class="zone-box zone-right-9x16">
-                <div class="zone-name">中部右侧 9:16 容器</div>
-                <div class="zone-code">right_9x16</div>
-            </a>
+            {{ render_zone(zone_dict['right_9x16'], 'zone-right-9x16') }}
 
             <!-- 右侧竖条：上下两格 -->
             <div class="zone-extra-col">
-                <a href="{{ url_for('zone_manage', zone_code='extra_top') }}" class="zone-box zone-extra-item">
-                    <div class="zone-name">右侧竖条 上格</div>
-                    <div class="zone-code">extra_top</div>
-                </a>
-                <a href="{{ url_for('zone_manage', zone_code='extra_bottom') }}" class="zone-box zone-extra-item">
-                    <div class="zone-name">右侧竖条 下格</div>
-                    <div class="zone-code">extra_bottom</div>
-                </a>
+                {{ render_zone(zone_dict['extra_top'], 'zone-extra-item') }}
+                {{ render_zone(zone_dict['extra_bottom'], 'zone-extra-item') }}
             </div>
         </div>
 
         <!-- 底部三格 -->
         <div class="zone-bottom-cells">
-            <a href="{{ url_for('zone_manage', zone_code='bottom_cell_1') }}" class="zone-box zone-bottom-cell">
-                <div class="zone-name">底部三格：左</div>
-                <div class="zone-code">bottom_cell_1</div>
-            </a>
-            <a href="{{ url_for('zone_manage', zone_code='bottom_cell_2') }}" class="zone-box zone-bottom-cell">
-                <div class="zone-name">底部三格：中</div>
-                <div class="zone-code">bottom_cell_2</div>
-            </a>
-            <a href="{{ url_for('zone_manage', zone_code='bottom_cell_3') }}" class="zone-box zone-bottom-cell">
-                <div class="zone-name">底部三格：右</div>
-                <div class="zone-code">bottom_cell_3</div>
-            </a>
+            {{ render_zone(zone_dict['bottom_cell_1'], 'zone-bottom-cell') }}
+            {{ render_zone(zone_dict['bottom_cell_2'], 'zone-bottom-cell') }}
+            {{ render_zone(zone_dict['bottom_cell_3'], 'zone-bottom-cell') }}
         </div>
 
         <!-- 底部状态条 -->
-        <a href="{{ url_for('zone_manage', zone_code='bottom_strip') }}" class="zone-box zone-bottom-strip">
-            <div class="zone-name">底部状态条（仅文字）</div>
-            <div class="zone-code">bottom_strip</div>
-        </a>
+        {{ render_zone(zone_dict['bottom_strip'], 'zone-bottom-strip') }}
     </div>
 </div>
+
+<!-- 区域设置模态框 -->
+<div class="modal fade" id="zoneSettingsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">区域设置</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2 text-muted" id="settingsZoneName"></p>
+                <div class="alert alert-warning py-2" id="fullscreenHint">
+                    同一时间只能有一个区域全屏显示。
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="fullscreenSwitch">
+                    <label class="form-check-label" for="fullscreenSwitch">设为全屏播放</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveZoneSettings()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentZoneCode = null;
+    let zoneModal = null;
+    const currentFullscreen = {{ fullscreen_zone|default("", true)|tojson }};
+
+    function openZoneSettings(event, code, name, isFullscreen) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        currentZoneCode = code;
+        $('#settingsZoneName').text(`${name} (${code})`);
+        $('#fullscreenSwitch').prop('checked', Boolean(isFullscreen));
+
+        if (currentFullscreen && code !== currentFullscreen) {
+            $('#fullscreenHint').text(`当前全屏区域: ${currentFullscreen}，保存后将切换为 ${code}`);
+        } else if (currentFullscreen && code === currentFullscreen) {
+            $('#fullscreenHint').text('当前即为全屏区域。关闭开关可恢复多区域布局。');
+        } else {
+            $('#fullscreenHint').text('当前未设置全屏，启用后其他区域将被隐藏。');
+        }
+
+        if (!zoneModal) {
+            zoneModal = new bootstrap.Modal(document.getElementById('zoneSettingsModal'));
+        }
+        zoneModal.show();
+    }
+
+    function saveZoneSettings() {
+        if (!currentZoneCode) return;
+        const enableFullscreen = $('#fullscreenSwitch').is(':checked');
+
+        $.ajax({
+            url: `/api/zone/${currentZoneCode}/fullscreen`,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ is_fullscreen: enableFullscreen }),
+            success: function (res) {
+                if (res.success) {
+                    location.reload();
+                } else {
+                    alert(res.error || '保存失败');
+                }
+            },
+            error: function (_xhr, _status, err) {
+                alert('保存失败: ' + err);
+            }
+        });
+    }
+</script>
 {% endblock %}

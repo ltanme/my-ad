@@ -123,7 +123,24 @@ def logout():
 @login_required
 def index():
     """管理主页"""
-    return render_template('index.html', zones=ZONES)
+    zone_rows = db.get_all_zones()
+    zone_map = {z['code']: z for z in zone_rows}
+
+    zones = []
+    for code, name in ZONES:
+        z = zone_map.get(code, {'code': code, 'name': name, 'is_fullscreen': 0})
+        z['name'] = z.get('name') or name
+        z['is_fullscreen'] = bool(z.get('is_fullscreen'))
+        zones.append(z)
+
+    fullscreen_zone = next((z['code'] for z in zones if z.get('is_fullscreen')), None)
+
+    return render_template(
+        'index.html',
+        zones=zones,
+        zone_dict={z['code']: z for z in zones},
+        fullscreen_zone=fullscreen_zone
+    )
 
 
 # ========== 区域管理 ==========
@@ -142,6 +159,30 @@ def zone_manage(zone_code):
                          zone_code=zone_code, 
                          zone_name=zone_name,
                          playlists=playlists)
+
+
+@app.route('/api/zone/<zone_code>/fullscreen', methods=['POST'])
+@login_required
+def api_set_zone_fullscreen(zone_code):
+    """设置区域是否全屏显示"""
+    data = request.json or {}
+    enabled = bool(data.get('is_fullscreen'))
+
+    try:
+        db.set_zone_fullscreen(zone_code, enabled)
+        trigger_reload()
+
+        fullscreen_zone = db.get_fullscreen_zone()
+        active_code = fullscreen_zone['code'] if fullscreen_zone else None
+
+        logger.info(f"更新全屏区域: code={zone_code}, enabled={enabled}, active={active_code}")
+        return jsonify({'success': True, 'fullscreen_zone': active_code})
+    except ValueError as e:
+        logger.warning(f"设置全屏失败: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        logger.error(f"设置全屏失败: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': '内部错误'}), 500
 
 
 # ========== 播放列表 API ==========
