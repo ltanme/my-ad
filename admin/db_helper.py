@@ -54,6 +54,15 @@ class DBHelper:
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_zone_fullscreen ON zone(is_fullscreen) WHERE is_fullscreen = 1"
         )
 
+        # playlist_item 补充倒计时字段
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='playlist_item'")
+        has_item_table = cursor.fetchone()
+        if has_item_table:
+            cursor.execute("PRAGMA table_info(playlist_item)")
+            item_columns = [row[1] for row in cursor.fetchall()]
+            if 'countdown_target' not in item_columns:
+                cursor.execute("ALTER TABLE playlist_item ADD COLUMN countdown_target TEXT")
+
         conn.commit()
         conn.close()
     
@@ -209,7 +218,7 @@ class DBHelper:
     
     def add_playlist_item(self, playlist_id: int, asset_id: Optional[int] = None, 
                          text_inline: Optional[str] = None, display_ms: int = 5000,
-                         play_order: Optional[int] = None):
+                         play_order: Optional[int] = None, countdown_target: Optional[str] = None):
         """添加播放项"""
         if play_order is None:
             # 获取当前最大序号
@@ -225,9 +234,9 @@ class DBHelper:
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO playlist_item 
-            (playlist_id, asset_id, text_inline, display_ms, play_order, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (playlist_id, asset_id, text_inline, display_ms, play_order, beijing_time, beijing_time))
+            (playlist_id, asset_id, text_inline, display_ms, play_order, countdown_target, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (playlist_id, asset_id, text_inline, display_ms, play_order, countdown_target, beijing_time, beijing_time))
         item_id = cursor.lastrowid
         conn.commit()
         conn.close()

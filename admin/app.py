@@ -267,12 +267,34 @@ def api_add_item():
     data = request.json
     playlist_id = data.get('playlist_id')
     item_type = data.get('type')
+    display_ms = int(data.get('display_ms', 5000))
     
     try:
         if item_type == 'text':
             text = data.get('text')
-            display_ms = data.get('display_ms', 5000)
             item_id = db.add_playlist_item(playlist_id, text_inline=text, display_ms=display_ms)
+        elif item_type == 'countdown':
+            title = data.get('title') or ''
+            target_date = data.get('target_date')
+
+            if not target_date:
+                return jsonify({'success': False, 'error': '缺少目标日期'})
+
+            from datetime import datetime, date
+            try:
+                target = datetime.strptime(target_date, "%Y-%m-%d").date()
+            except ValueError:
+                return jsonify({'success': False, 'error': '日期格式应为 YYYY-MM-DD'})
+
+            if target <= date.today():
+                return jsonify({'success': False, 'error': '目标日期必须大于今天'})
+
+            item_id = db.add_playlist_item(
+                playlist_id,
+                text_inline=title,
+                display_ms=display_ms,
+                countdown_target=target_date
+            )
         else:
             return jsonify({'success': False, 'error': '请先上传文件'})
         
@@ -303,9 +325,14 @@ def api_upload():
     file = request.files['file']
     if file.filename == '':
         return jsonify({'success': False, 'error': '文件名为空'})
+
+    if '.' not in file.filename:
+        return jsonify({'success': False, 'error': '文件缺少扩展名'})
     
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
+        if '.' not in filename:
+            return jsonify({'success': False, 'error': '文件名缺少扩展名'})
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         

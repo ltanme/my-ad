@@ -158,6 +158,13 @@ class MiddleStage(QWidget):
         for idx, item in enumerate(items, 1):
             kind = item.get("kind")
             item_id = item.get("id")
+            # 规范化展示时长
+            try:
+                display_ms = int(item.get("display_ms") or 5000)
+                if display_ms <= 0:
+                    display_ms = 5000
+            except Exception:
+                display_ms = 5000
             
             if kind == "image":
                 uri = item.get("uri")
@@ -166,7 +173,7 @@ class MiddleStage(QWidget):
                     playlist.append({
                         "type": "image",
                         "uri": uri,
-                        "display_ms": item.get("display_ms", 5000),
+                        "display_ms": display_ms,
                         "item_id": item_id
                     })
                 else:
@@ -191,11 +198,25 @@ class MiddleStage(QWidget):
                     playlist.append({
                         "type": "text",
                         "text": text,
-                        "display_ms": item.get("display_ms", 5000),
+                        "display_ms": display_ms,
                         "item_id": item_id
                     })
                 else:
                     logger.warning(f"[{frame.name}] 项目 {idx}: 文字内容为空")
+            elif kind == "countdown":
+                target = item.get("countdown_target")
+                title = item.get("text") or ""
+                if target:
+                    playlist.append({
+                        "type": "countdown",
+                        "target": target,
+                        "title": title,
+                        "display_ms": display_ms,
+                        "item_id": item_id
+                    })
+                    logger.debug(f"[{frame.name}] 项目 {idx}: 倒计时 - {title} -> {target}")
+                else:
+                    logger.warning(f"[{frame.name}] 项目 {idx}: 倒计时缺少目标日期")
         
         if not playlist:
             logger.error(f"[{frame.name}] 没有有效的播放项")
@@ -249,6 +270,11 @@ class MiddleStage(QWidget):
                 lambda status: self._on_video_status(frame, status)
             )
             frame.play_videos([uri], loop=False)
+        elif item_type == "countdown":
+            display_ms = item.get("display_ms", 5000)
+            text = self._format_countdown_text(item)
+            frame.set_text(text, display_ms=display_ms)
+            QTimer.singleShot(display_ms, lambda: self._play_next_mixed_item(frame))
 
     def _play_next_mixed_item(self, frame: MediaFrame):
         """播放下一项"""
@@ -262,6 +288,23 @@ class MiddleStage(QWidget):
         if status == QMediaPlayer.EndOfMedia:
             print(f"[{frame.name}] 视频播放完成")
             QTimer.singleShot(500, lambda: self._play_next_mixed_item(frame))
+
+    def _format_countdown_text(self, item):
+        """生成倒计时显示文本"""
+        from datetime import datetime, date
+        target_str = item.get("target")
+        title = item.get("title") or "倒计时"
+        days_left = "-"
+        try:
+            target_date = datetime.strptime(target_str, "%Y-%m-%d").date()
+            today = date.today()
+            diff = (target_date - today).days
+            days_left = max(0, diff)
+        except Exception as e:
+            logger.error(f"倒计时日期解析失败: {e}")
+            days_left = "-"
+
+        return f"{title} 还有 <span style='color:#ff4d4f;font-weight:bold;font-size:105%;'>{days_left}</span> 天"
 
     def resizeEvent(self, e):
         """窗口大小变化时重新布局"""

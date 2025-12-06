@@ -51,6 +51,18 @@ class MediaDBManager:
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_zone_fullscreen ON zone(is_fullscreen) WHERE is_fullscreen = 1"
         )
 
+        # playlist_item 增加倒计时字段
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='playlist_item'")
+        has_item_table = cursor.fetchone()
+        if has_item_table:
+            cursor.execute("PRAGMA table_info(playlist_item)")
+            item_columns = [row[1] for row in cursor.fetchall()]
+            if 'countdown_target' not in item_columns:
+                try:
+                    cursor.execute("ALTER TABLE playlist_item ADD COLUMN countdown_target TEXT")
+                except sqlite3.Error as e:
+                    logger.error(f"补充 countdown_target 字段失败: {e}")
+
         conn.commit()
         conn.close()
     
@@ -126,6 +138,7 @@ class MediaDBManager:
                 pi.scale_mode,
                 pi.volume,
                 pi.asset_id,
+                pi.countdown_target,
                 ma.kind,
                 ma.uri,
                 ma.text_content,
@@ -154,13 +167,18 @@ class MediaDBManager:
                 "kind": None,
                 "uri": None,
                 "text": row["text_inline"] or row["text_content"],
-                "display_ms": row["display_ms"] or 5000,
+                "display_ms": self._safe_int(row["display_ms"], 5000),
                 "loops": row["per_item_loops"] or 1,
                 "scale_mode": row["scale_mode"] or "cover",
                 "volume": row["volume"] if row["volume"] is not None else 1.0,
             }
-            
-            if row["text_inline"]:
+
+            # 倒计时类型优先
+            if row["countdown_target"]:
+                item["kind"] = "countdown"
+                item["countdown_target"] = row["countdown_target"]
+                logger.debug(f"      → 类型: 倒计时，到期: {row['countdown_target']}")
+            elif row["text_inline"]:
                 item["kind"] = "text"
                 logger.debug(f"      → 类型: 内联文本")
             else:
@@ -172,7 +190,7 @@ class MediaDBManager:
                 logger.debug(f"         原始URI: {raw_uri}")
                 logger.debug(f"         规范化URI: {item['uri']}")
                 if item["kind"] == "video" and row["duration_ms"]:
-                    item["display_ms"] = row["duration_ms"]
+                    item["display_ms"] = self._safe_int(row["duration_ms"], item["display_ms"])
             
             items.append(item)
         
@@ -190,3 +208,11 @@ class MediaDBManager:
         if uri.startswith("file://"):
             return uri[7:]  # 去掉 file://
         return uri
+
+    def _safe_int(self, val, default: int) -> int:
+        """将数据库读出的值转为正整数，异常时使用默认值"""
+        try:
+            v = int(val)
+            return v if v > 0 else default
+        except Exception:
+            return default

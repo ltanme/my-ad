@@ -371,7 +371,7 @@ class MediaFrame(QFrame):
     def _apply_text_font_size(self):
         """根据是否全屏调整文本字体大小"""
         if self._is_fullscreen and self.height() > 0:
-            target_px = max(12, int(self.height() * 0.15))
+            target_px = max(12, int(self.height() * 0.20))
         else:
             target_px = self._base_font_px
         if target_px != self._current_font_px:

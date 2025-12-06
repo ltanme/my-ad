@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS playlist_item (
   per_item_loops  INTEGER NOT NULL DEFAULT 1,
   volume          REAL CHECK (volume BETWEEN 0.0 AND 1.0),
   scale_mode      TEXT NOT NULL DEFAULT 'cover' CHECK (scale_mode IN ('cover','fit')),
+  countdown_target TEXT,
   active_from     DATETIME,
   active_to       DATETIME,
   enabled         INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0,1)),
@@ -159,6 +160,14 @@ def init_database(db_path=DB_PATH):
         cursor.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_zone_fullscreen ON zone(is_fullscreen) WHERE is_fullscreen = 1"
         )
+
+        # 兼容旧库：补充倒计时字段
+        cursor.execute("PRAGMA table_info(playlist_item)")
+        pi_columns = [row[1] for row in cursor.fetchall()]
+        if 'countdown_target' not in pi_columns:
+            print("为 playlist_item 表增加 countdown_target 字段...")
+            cursor.execute("ALTER TABLE playlist_item ADD COLUMN countdown_target TEXT")
+            print("✓ 已补充 countdown_target 字段")
         
         # 插入初始区域数据（如果表为空）
         cursor.execute("SELECT COUNT(*) FROM zone")

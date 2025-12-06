@@ -80,6 +80,7 @@ CREATE TABLE playlist_item (
   volume          REAL CHECK (volume BETWEEN 0.0 AND 1.0),      -- 视频音量（可空）
   scale_mode      TEXT NOT NULL DEFAULT 'cover'                 -- 尺寸策略：cover/fit（与你代码一致）
                    CHECK (scale_mode IN ('cover','fit')),
+  countdown_target TEXT,                                        -- 倒计时目标日期（YYYY-MM-DD），非空表示倒计时类型
   active_from     DATETIME,                                     -- 可选：开始生效时间（排期）
   active_to       DATETIME,                                     -- 可选：结束生效时间
   enabled         INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0,1)),
