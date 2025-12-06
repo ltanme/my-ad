@@ -15,7 +15,7 @@ python3 -c "import flask" 2>/dev/null || {
 echo "✓ 依赖检查通过"
 echo ""
 echo "启动管理后台..."
-echo "访问地址: http://localhost:5000"
+echo "访问地址: http://[::1]:3400 或 http://127.0.0.1:3400"
 echo "默认账号: admin / admin123"
 echo "======================================"
 echo ""

@@ -458,4 +458,5 @@ def download_database():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=3400, debug=True)
+    # 支持 IPv4/IPv6，使用通配地址“::”
+    app.run(host='::', port=3400, debug=True)
