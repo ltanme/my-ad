@@ -52,6 +52,9 @@
                         {% if not playlist.is_active %}
                         <button class="btn btn-outline-success"
                             onclick="activatePlaylist({{ playlist.id }})">激活</button>
+                        {% else %}
+                        <button class="btn btn-outline-secondary"
+                            onclick="reloadPlaylist({{ playlist.id }})">刷新</button>
                         {% endif %}
                         <button class="btn btn-outline-primary" onclick="manageItems({{ playlist.id }})">管理内容</button>
                         <button class="btn btn-outline-danger" onclick="deletePlaylist({{ playlist.id }})">删除</button>
@@ -274,6 +277,22 @@
         });
     }
 
+    function reloadPlaylist(playlistId) {
+        $.ajax({
+            url: `/api/playlist/${playlistId}/activate`,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ zone_code: zoneCode }),
+            success: function (res) {
+                if (res.success) {
+                    alert('已通知刷新');
+                } else {
+                    alert('刷新失败: ' + res.error);
+                }
+            }
+        });
+    }
+
     function deletePlaylist(playlistId) {
         if (!confirm('确定要删除这个播放列表吗？此操作不可恢复！')) return;
 
@@ -285,6 +304,34 @@
                     location.reload();
                 } else {
                     alert('删除失败: ' + res.error);
+                }
+            }
+        });
+    }
+
+    function setFirst(itemId) {
+        $.ajax({
+            url: `/api/item/${itemId}/first`,
+            method: 'POST',
+            success: function (res) {
+                if (res.success) {
+                    loadItems(currentPlaylistId);
+                } else {
+                    alert('置顶失败: ' + res.error);
+                }
+            }
+        });
+    }
+
+    function saveAssetTitle(assetId, title) {
+        $.ajax({
+            url: `/api/asset/${assetId}/title`,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ title: title }),
+            success: function (res) {
+                if (!res.success) {
+                    alert('保存标题失败: ' + res.error);
                 }
             }
         });
@@ -337,13 +384,29 @@
                                 <code class="text-break small">${item.uri}</code>
                             </div>
                         ` : ''}
+                        ${item.asset_id && item.original_name ? `
+                            <div class="mb-1 d-flex align-items-center">
+                                <strong class="me-2">标题:</strong>
+                                <input class="form-control form-control-sm" style="max-width: 320px;"
+                                       value="${item.original_name}"
+                                       onblur="saveAssetTitle(${item.asset_id}, this.value)"
+                                       onclick="this.select()">
+                            </div>
+                        ` : ''}
                         <small class="text-muted d-block">
                             <i class="bi bi-clock"></i> 添加时间: ${item.created_at || '未知'}
                             ${item.display_ms ? ` | <i class="bi bi-hourglass"></i> 显示时长: ${item.display_ms}ms` : ''}
                             ${item.play_order ? ` | 播放顺序: ${item.play_order}` : ''}
                         </small>
                     </div>
-                    <button class="btn btn-sm btn-outline-danger ms-2" onclick="deleteItem(${item.id})">删除</button>
+                    <div class="btn-group btn-group-sm ms-2">
+                        <button class="btn btn-outline-secondary" title="设为首个播放" onclick="setFirst(${item.id})">
+                            <i class="bi bi-pin-angle"></i>
+                        </button>
+                        <button class="btn btn-outline-danger" title="删除" onclick="deleteItem(${item.id})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

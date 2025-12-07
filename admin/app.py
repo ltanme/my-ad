@@ -314,6 +314,18 @@ def api_delete_item(item_id):
         return jsonify({'success': False, 'error': str(e)})
 
 
+@app.route('/api/item/<int:item_id>/first', methods=['POST'])
+@login_required
+def api_set_item_first(item_id):
+    """将播放项调整为首个播放"""
+    try:
+        db.set_item_first(item_id)
+        trigger_reload()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
 # ========== 文件上传 ==========
 @app.route('/api/upload', methods=['POST'])
 @login_required
@@ -339,10 +351,15 @@ def api_upload():
         if '.' not in filename:
             return jsonify({'success': False, 'error': '文件名缺少扩展名'})
 
-        filepath = os.path.join(target_dir, filename)
+        ext = filename.rsplit('.', 1)[1].lower()
+        from uuid import uuid4
+        ts = datetime.now().strftime('%Y%m%d%H%M%S')
+        new_filename = f"{uuid4().hex}_{ts}.{ext}"
+
+        filepath = os.path.join(target_dir, new_filename)
         file.save(filepath)
         
-        ext = filename.rsplit('.', 1)[1].lower()
+        original_name = filename
         
         # 处理 HEIC 格式：转换为 JPG
         if ext in {'heic', 'heif'}:
@@ -353,9 +370,9 @@ def api_upload():
                 # 转换 HEIC 为 JPG
                 jpg_path = process_heic_upload(filepath, keep_original=False)
                 filepath = jpg_path
-                filename = os.path.basename(jpg_path)
+                new_filename = os.path.basename(jpg_path)
                 ext = 'jpg'
-                logger.info(f"HEIC 已转换为 JPG: {filename}")
+                logger.info(f"HEIC 已转换为 JPG: {new_filename}")
             except Exception as e:
                 logger.error(f"HEIC 转换失败: {e}", exc_info=True)
                 return jsonify({'success': False, 'error': f'HEIC 转换失败: {str(e)}'})
@@ -369,7 +386,7 @@ def api_upload():
             kind = 'unknown'
         
         uri = f"file://{filepath}"
-        asset_id = db.create_media_asset(kind, uri)
+        asset_id = db.create_media_asset(kind, uri, original_name=original_name)
         
         playlist_id = request.form.get('playlist_id')
         display_ms = request.form.get('display_ms', 5000)
@@ -431,6 +448,20 @@ def api_add_asset_by_path():
         
     except Exception as e:
         logger.error(f"通过路径添加资源失败: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/asset/<int:asset_id>/title', methods=['POST'])
+@login_required
+def api_update_asset_title(asset_id):
+    """更新资源标题（原始文件名）"""
+    data = request.json or {}
+    title = data.get('title', '').strip()
+    try:
+        db.update_media_title(asset_id, title)
+        trigger_reload()
+        return jsonify({'success': True})
+    except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
 

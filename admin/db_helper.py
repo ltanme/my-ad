@@ -54,6 +54,15 @@ class DBHelper:
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_zone_fullscreen ON zone(is_fullscreen) WHERE is_fullscreen = 1"
         )
 
+        # media_asset 增加原始文件名字段
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='media_asset'")
+        has_asset_table = cursor.fetchone()
+        if has_asset_table:
+            cursor.execute("PRAGMA table_info(media_asset)")
+            asset_columns = [row[1] for row in cursor.fetchall()]
+            if 'original_name' not in asset_columns:
+                cursor.execute("ALTER TABLE media_asset ADD COLUMN original_name TEXT")
+
         # playlist_item 补充倒计时字段
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='playlist_item'")
         has_item_table = cursor.fetchone()
@@ -206,7 +215,7 @@ class DBHelper:
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT pi.*, ma.kind, ma.uri, ma.text_content
+            SELECT pi.*, ma.kind, ma.uri, ma.text_content, ma.original_name
             FROM playlist_item pi
             LEFT JOIN media_asset ma ON pi.asset_id = ma.id
             WHERE pi.playlist_id = ?
@@ -241,6 +250,37 @@ class DBHelper:
         conn.commit()
         conn.close()
         return item_id
+
+    def set_item_first(self, item_id: int):
+        """将指定播放项调整为首位，并顺序重排"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT playlist_id FROM playlist_item WHERE id = ?", (item_id,))
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return
+        playlist_id = row['playlist_id']
+
+        cursor.execute("""
+            SELECT id FROM playlist_item 
+            WHERE playlist_id = ? 
+            ORDER BY play_order ASC, id ASC
+        """, (playlist_id,))
+        ids = [r[0] for r in cursor.fetchall()]
+        if item_id not in ids:
+            conn.close()
+            return
+
+        # 目标项置顶，然后重新编号
+        ids.remove(item_id)
+        new_order = [item_id] + ids
+        for idx, pid in enumerate(new_order, 1):
+            cursor.execute("UPDATE playlist_item SET play_order = ?, updated_at = ? WHERE id = ?",
+                           (idx, get_beijing_time(), pid))
+
+        conn.commit()
+        conn.close()
     
     def delete_playlist_item(self, item_id: int):
         """删除播放项"""
@@ -260,15 +300,15 @@ class DBHelper:
     
     # ========== 媒体资源相关 ==========
     def create_media_asset(self, kind: str, uri: str, text_content: Optional[str] = None,
-                          duration_ms: Optional[int] = None) -> int:
+                          duration_ms: Optional[int] = None, original_name: Optional[str] = None) -> int:
         """创建媒体资源"""
         beijing_time = get_beijing_time()
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO media_asset (kind, uri, text_content, duration_ms, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (kind, uri, text_content, duration_ms, beijing_time, beijing_time))
+            INSERT INTO media_asset (kind, uri, text_content, duration_ms, original_name, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (kind, uri, text_content, duration_ms, original_name, beijing_time, beijing_time))
         asset_id = cursor.lastrowid
         conn.commit()
         conn.close()
@@ -282,3 +322,12 @@ class DBHelper:
         row = cursor.fetchone()
         conn.close()
         return dict(row) if row else None
+
+    def update_media_title(self, asset_id: int, title: str):
+        """更新媒体资源的原始名称/title 字段"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE media_asset SET original_name = ?, updated_at = ? WHERE id = ?",
+                       (title, get_beijing_time(), asset_id))
+        conn.commit()
+        conn.close()
