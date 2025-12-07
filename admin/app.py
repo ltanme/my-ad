@@ -330,10 +330,16 @@ def api_upload():
         return jsonify({'success': False, 'error': '文件缺少扩展名'})
     
     if file and allowed_file(file.filename):
+        from datetime import datetime
+        date_dir = datetime.now().strftime('%Y%m%d')
+        target_dir = os.path.join(app.config['UPLOAD_FOLDER'], date_dir)
+        os.makedirs(target_dir, exist_ok=True)
+
         filename = secure_filename(file.filename)
         if '.' not in filename:
             return jsonify({'success': False, 'error': '文件名缺少扩展名'})
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+        filepath = os.path.join(target_dir, filename)
         file.save(filepath)
         
         ext = filename.rsplit('.', 1)[1].lower()
