@@ -223,6 +223,12 @@ class MediaFrame(QFrame):
         """播放视频列表"""
         logger.info(f"[{self.name}] 准备播放 {len(items or [])} 个视频")
         
+        # 全屏时使用信箱模式（保留比例，黑边补足）；非全屏保持原逻辑
+        if self._is_fullscreen:
+            self.video_widget.setAspectRatioMode(Qt.KeepAspectRatio)
+        else:
+            self.video_widget.setAspectRatioMode(Qt.KeepAspectRatioByExpanding)
+
         self.playlist.clear()
         valid_count = 0
         
