@@ -79,6 +79,7 @@ class MiddleStage(QWidget):
             for f in normal_frames:
                 f.hide()
             self._load_fullscreen_zone(db_manager, fullscreen_zone)
+            self._apply_layout()
             return
         else:
             self.fullscreen_frame.set_fullscreen_mode(False)
@@ -309,6 +310,10 @@ class MiddleStage(QWidget):
     def resizeEvent(self, e):
         """窗口大小变化时重新布局"""
         super().resizeEvent(e)
+        self._apply_layout()
+
+    def _apply_layout(self):
+        """根据当前模式重新计算布局（供 resize 和模式切换调用）"""
         GUT = 6
         area: QRect = self.rect().adjusted(GUT, GUT, -GUT, -GUT)
         if area.width() <= 0 or area.height() <= 0:
