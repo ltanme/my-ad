@@ -137,6 +137,18 @@ class MediaFrame(QFrame):
         """标记是否全屏（用于动态调整字体大小）"""
         self._is_fullscreen = bool(enabled)
         self._apply_text_font_size()
+    
+    def set_base_font_px(self, size_px: int):
+        """配置非全屏模式下的基础字体大小"""
+        try:
+            size_px = int(size_px)
+        except Exception:
+            return
+        if size_px <= 0:
+            return
+        self._base_font_px = size_px
+        if not self._is_fullscreen:
+            self._apply_text_font_size()
 
     def set_text(self, text: str, display_ms=0):
         """显示文本"""

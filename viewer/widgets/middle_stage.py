@@ -14,6 +14,7 @@ from .media_frame import MediaFrame
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from logger_config import get_logger
+from config_manager import config
 
 logger = get_logger()
 
@@ -35,6 +36,14 @@ class MiddleStage(QWidget):
         # 全屏占位框（仅在全屏模式下展示）
         self.fullscreen_zone = None
         self.fullscreen_frame = MediaFrame("全屏区域", border_color="orange")
+
+        # 配置默认参数
+        self.zone_default_duration = {
+            "left_16x9": config.get("zones.left_16x9.default_image_duration", 5000),
+            "right_9x16": config.get("zones.right_9x16.default_image_duration", 5000),
+        }
+        marquee_font_px = config.get("zones.top_marquee.font_size", 36)
+        self.left_16x9.set_base_font_px(marquee_font_px)
 
         for w in [self.left_16x9, self.right_9x16, self.extra_top, self.extra_bot, *self.bottom_cells, self.fullscreen_frame]:
             w.setParent(self)
@@ -93,7 +102,13 @@ class MiddleStage(QWidget):
         items = db_manager.get_playlist_items("left_16x9", limit=20)
         logger.info(f"[左侧16:9] 从数据库获取到 {len(items)} 个播放项")
         if items:
-            self._start_mixed_playlist(self.left_16x9, items)
+            default_ms = self.zone_default_duration.get("left_16x9", 5000)
+            self._start_mixed_playlist(
+                self.left_16x9,
+                items,
+                zone_code="left_16x9",
+                default_ms=default_ms,
+            )
         else:
             logger.warning(f"[左侧16:9] 没有播放项，显示默认文字")
         
@@ -102,7 +117,13 @@ class MiddleStage(QWidget):
         items = db_manager.get_playlist_items("right_9x16", limit=20)
         logger.info(f"[右侧9:16] 从数据库获取到 {len(items)} 个播放项")
         if items:
-            self._start_mixed_playlist(self.right_9x16, items)
+            default_ms = self.zone_default_duration.get("right_9x16", 5000)
+            self._start_mixed_playlist(
+                self.right_9x16,
+                items,
+                zone_code="right_9x16",
+                default_ms=default_ms,
+            )
         else:
             logger.warning(f"[右侧9:16] 没有播放项，显示默认文字")
         
@@ -135,10 +156,19 @@ class MiddleStage(QWidget):
         self.fullscreen_zone = zone_code
         self.fullscreen_frame.name = f"全屏:{zone_code}"
         items = db_manager.get_playlist_items(zone_code, limit=50)
+        default_ms = self.zone_default_duration.get(
+            zone_code,
+            config.get(f"zones.{zone_code}.default_image_duration", 5000),
+        )
 
         logger.info(f"[全屏模式] 区域 {zone_code} 播放项: {len(items)}")
         if items:
-            self._start_mixed_playlist(self.fullscreen_frame, items)
+            self._start_mixed_playlist(
+                self.fullscreen_frame,
+                items,
+                zone_code=zone_code,
+                default_ms=default_ms,
+            )
         else:
             self.fullscreen_frame.set_text(f"{zone_code}\n暂无播放内容")
 
@@ -147,7 +177,20 @@ class MiddleStage(QWidget):
         self.fullscreen_frame.setGeometry(area)
         self.fullscreen_frame.raise_()
 
-    def _start_mixed_playlist(self, frame: MediaFrame, items: list):
+    def _normalize_display_ms(self, raw_value, default_ms: int) -> int:
+        """将后台配置的时长统一成毫秒，并兜底到默认值"""
+        try:
+            ms = int(raw_value)
+        except Exception:
+            return default_ms
+        if ms <= 0:
+            return default_ms
+        # 小于 50 视为“秒”输入（例如填了 5），自动转成毫秒
+        if ms < 50:
+            return ms * 1000
+        return ms
+
+    def _start_mixed_playlist(self, frame: MediaFrame, items: list, *, zone_code: str = None, default_ms: int = 5000):
         """启动混合播放列表：图片+视频+文字按顺序循环"""
         if not items:
             logger.warning(f"[{frame.name}] 播放列表为空")
@@ -160,12 +203,7 @@ class MiddleStage(QWidget):
             kind = item.get("kind")
             item_id = item.get("id")
             # 规范化展示时长
-            try:
-                display_ms = int(item.get("display_ms") or 5000)
-                if display_ms <= 0:
-                    display_ms = 5000
-            except Exception:
-                display_ms = 5000
+            display_ms = self._normalize_display_ms(item.get("display_ms"), default_ms)
             
             if kind == "image":
                 uri = item.get("uri")
