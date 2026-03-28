@@ -46,6 +46,13 @@
     </style>
 </head>
 <body>
+    <script>
+        window.APP_ROOT = {{ app_root|tojson }};
+        window.appUrl = function(path) {
+            const normalized = path.startsWith('/') ? path : `/${path}`;
+            return `${window.APP_ROOT}${normalized}`;
+        };
+    </script>
     {% if session.logged_in %}
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">

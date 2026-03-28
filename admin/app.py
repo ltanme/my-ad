@@ -5,6 +5,7 @@
 """
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash, send_file
 from werkzeug.utils import secure_filename
+from werkzeug.middleware.proxy_fix import ProxyFix
 import os
 import sqlite3
 import logging
@@ -50,11 +51,20 @@ except Exception as e:
     logger.warning(f"加载日志配置失败，使用默认配置: {e}")
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 app.config['SECRET_KEY'] = SECRET_KEY
 app.config['UPLOAD_FOLDER'] = str(UPLOAD_FOLDER)
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
 db = DBHelper()
+
+
+@app.context_processor
+def inject_app_root():
+    """Expose the forwarded mount prefix to templates and JS."""
+    return {
+        'app_root': (request.script_root or '').rstrip('/')
+    }
 
 
 def trigger_reload():

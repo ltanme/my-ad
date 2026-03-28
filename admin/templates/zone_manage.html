@@ -241,7 +241,7 @@
         const loopMode = $('#loopMode').val();
 
         $.ajax({
-            url: '/api/playlist/create',
+            url: appUrl('/api/playlist/create'),
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify({
@@ -263,7 +263,7 @@
         if (!confirm('确定要激活这个播放列表吗？')) return;
 
         $.ajax({
-            url: `/api/playlist/${playlistId}/activate`,
+            url: appUrl(`/api/playlist/${playlistId}/activate`),
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify({ zone_code: zoneCode }),
@@ -279,7 +279,7 @@
 
     function reloadPlaylist(playlistId) {
         $.ajax({
-            url: `/api/playlist/${playlistId}/activate`,
+            url: appUrl(`/api/playlist/${playlistId}/activate`),
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify({ zone_code: zoneCode }),
@@ -297,7 +297,7 @@
         if (!confirm('确定要删除这个播放列表吗？此操作不可恢复！')) return;
 
         $.ajax({
-            url: `/api/playlist/${playlistId}/delete`,
+            url: appUrl(`/api/playlist/${playlistId}/delete`),
             method: 'POST',
             success: function (res) {
                 if (res.success) {
@@ -311,7 +311,7 @@
 
     function setFirst(itemId) {
         $.ajax({
-            url: `/api/item/${itemId}/first`,
+            url: appUrl(`/api/item/${itemId}/first`),
             method: 'POST',
             success: function (res) {
                 if (res.success) {
@@ -325,7 +325,7 @@
 
     function saveAssetTitle(assetId, title) {
         $.ajax({
-            url: `/api/asset/${assetId}/title`,
+            url: appUrl(`/api/asset/${assetId}/title`),
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify({ title: title }),
@@ -345,7 +345,7 @@
 
     function loadItems(playlistId) {
         return $.ajax({
-            url: `/api/playlist/${playlistId}/items`,
+            url: appUrl(`/api/playlist/${playlistId}/items`),
             method: 'GET',
             success: function (res) {
                 if (res.success) {
@@ -424,7 +424,7 @@
         const displayMs = $('#displayMs').val();
 
         $.ajax({
-            url: '/api/item/add',
+            url: appUrl('/api/item/add'),
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify({
@@ -466,7 +466,7 @@
         }
 
         $.ajax({
-            url: '/api/item/add',
+            url: appUrl('/api/item/add'),
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify({
@@ -493,7 +493,7 @@
         if (!confirm('确定要删除这个项目吗？')) return;
 
         $.ajax({
-            url: `/api/item/${itemId}/delete`,
+            url: appUrl(`/api/item/${itemId}/delete`),
             method: 'POST',
             success: function (res) {
                 if (res.success) {
@@ -539,7 +539,7 @@
                 formData.append('display_ms', displayMs);
 
                 await $.ajax({
-                    url: '/api/upload',
+                    url: appUrl('/api/upload'),
                     method: 'POST',
                     data: formData,
                     processData: false,

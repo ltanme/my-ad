@@ -330,7 +330,7 @@
         const enableFullscreen = $('#fullscreenSwitch').is(':checked');
 
         $.ajax({
-            url: `/api/zone/${currentZoneCode}/fullscreen`,
+            url: appUrl(`/api/zone/${currentZoneCode}/fullscreen`),
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify({ is_fullscreen: enableFullscreen }),

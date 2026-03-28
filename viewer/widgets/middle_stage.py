@@ -43,7 +43,7 @@ class MiddleStage(QWidget):
             "right_9x16": config.get("zones.right_9x16.default_image_duration", 5000),
         }
         marquee_font_px = config.get("zones.top_marquee.font_size", 36)
-        self.left_16x9.set_base_font_px(marquee_font_px)
+        self.left_16x9.set_base_font_px(58)
 
         for w in [self.left_16x9, self.right_9x16, self.extra_top, self.extra_bot, *self.bottom_cells, self.fullscreen_frame]:
             w.setParent(self)
